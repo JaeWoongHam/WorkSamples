@@ -1,4 +1,4 @@
-# WorkSamples
+# Work Samples
 For demonstration or employment purposes only. Please find my compiled list of projects below:
 
 1) API R Package (Done in R)
