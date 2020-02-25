@@ -1,0 +1,82 @@
+---
+title: "CCDB"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{CCDB}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(CCDB)
+```
+
+
+### Introduction
+
+The Consumer Financial Protection Bureau (CFPB) is a US government agency that ensures consumers are treated fairly by financial companies. Its primary purposes are 1) holding companies accountable for illegal practices 2) listening to consumers by making sure their voices are heard via feedbacks or complaints 3) educate and arm the public with necessary financial knowledge to successfully navigate different financial choices and options.
+
+With that in mind, they collect data from both institutions and consumers, and compile such data to produce a number of databases, which includes the Consumer Complaint Database. The Consumer Complaint Database is essentially a collection of consumer complaint narratives about certain consumer financial products and services. The process in which CFPB collects data is the following:
+
+1)	Send request to companies for response
+2)	Complains are published upon receipt of response
+3)	Confirm commercial relationship with the consumer OR after 15 days, whichever comes first
+
+
+### API R Package Rationale
+
+The purpose of this final project is to effectively develop an r package that utilizes the API for the consumer complaints database. The database is updated daily, and can easily have more than a million datapoints given a timeframe of a year. Moreover, this database is very messy and complicated, where some of their website examples of API demonstration did not execute succesfully due to too many parameters and each parameter accepting only specific values from the user. This makes their originally API extremely difficult for an average user to use. Only a user with in-depth knowledge of the raw database would be able to perform a successful API query. With that in mind, my r package aims to make the API process more convenient and insightful for the user at the same time.
+
+
+### Company Function
+
+If the user wants to see what kind of complaints there has been for a specific company, this function is the one to use. It not only extracts useful information about the company itself in relation to consumer complaints, but also suggests possible values of the correct company name, if the user does not correctly input the right company name. This is done through two APIs and a user prompt option. This cannot be demonstrated, as it requires user prompt, otherwise it will produce an error. However, please feel free to try this wonderful function on your own! For example, if the user incorrectly types "Equifa", the prompt would suggest a list of possible names, such as "EQUIFAX, INC.". The user will be prompted again to reenter the correct name, and can do so using the desired suggestion.
+
+The output is four possible dataframes that lists the count of complaints by product category, issue cateogry, company response, and by company public response. The user can specify for the function to only display information for either one or a few of these options. PLease note that company public response is set to FALSE by default, as some companies don't have public responses.
+
+
+### Product Function
+If the user wants to see what kind of complaints there has been for a specific product, this function is the one to use. It not only extracts useful information about the product itself in relation to consumer complaints, but also suggests possible values of the correct product name, if the user does not correctly inputs the right product category. This is done through validation of accepted product categories against the user input. This does not involve a user prompt. I cannot show the error correction process for product name, as it will detect it as an error, since it requires manual input from the user again. However, the process would be selecting product = "Student" as an example, and the function would say it is an invalid input, and suggests "Student loan". Then, the user can put product = "Student loan" again for the correct output. Please note that the user input must always start with a capital letter for product.
+
+The output is two dataframes that lists the count of complaints by sub-product category and by state. The user can specify for the function to only display information for either sub-product category or by state only. 
+
+```{r}
+# example of outputs for debt collection, default selection
+product_function()
+```
+
+
+### General Function
+This function accepts a wide number of parameters, and allows the user to derive specific datapoints to tailor their search. This does not have any self-correcting input paramters. This function is recommend if the user knows exactly what he/she is looking for. This function is also best used after narrowing down what certain categories that a user might like to know more about from the first two functions available. The output is a single dataframe with all the original attributes from the raw database based on the specified parameters.
+
+```{r}
+general_function(company = "BANK OF AMERICA, NATIONAL ASSOCIATION",product = "Checking or savings account",issue="Managing an account", limit=10)
+```
+
+### Visualization Tool Function
+This function transforms any dataframe that was the output of the functions within this package. It specifically accepts a dataframe with only two columns. The first column has to be categorical, and the second column has to be values. This function aims to supplement, and enrich the output of other functions.
+
+```{r}
+#using the outputs of product function for student loan
+example1<-product_function(product="Student loan")
+#using the product category dataframe
+visualization_tool_function(example1[1],limit=10)
+```
+
+### Heatmap State Function
+Similar to the visualization tool, this function transforms any dataframe that has two columns from the ouput of the functions used in this package. However, this is more specific, because it only accepts categorical variables that are related to state. As such, please keep that in mind when using this function.
+
+```{r}
+#using the output of product function for Student loan
+example2 <- product_function(product="Vehicle loan or lease")
+#selecting the second dataframe, as that is the one with the state attributes and values
+heatmap_state_function(example2[2])
+```
+

@@ -1,0 +1,53 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# CCDB
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of CCDB is to not only make it easier for a user to acquire data from the consumer complaints database, it also provides useful information and summaries. It entails multiple functions that tailors its search, and produces an output of either a dataframe or a visualization chart/graph depending on the function. Even though all functions are made to work on their own, some functions are better used in combination with others.
+
+# Vignette
+Please refer to the vignette for a more complete and detailed information about the original consumer complaints database, rationale for the API R package, individual functions, and examples.
+
+
+## Examples
+
+```{r example}
+library(CCDB)
+# example of product function for debt collection
+product_function(product="Debt collection",subproduct_option = TRUE,state_option=TRUE)
+
+#example of general function for Bank of America, National Association
+general_function(company = "BANK OF AMERICA, NATIONAL ASSOCIATION",product = "Checking or savings account",issue="Managing an account", limit=10)
+
+#example of visualization tool using sample df
+visualization_tool_function()
+
+#example of visualization tool using the outputs of product function for Debt collection
+example1<- product_function(product="Debt collection")
+#using the subproduct category dataframe from the output
+visualization_tool_function(example1[1],limit=10)
+
+#example of heatmap state visualization tool using sample df
+heatmap_state_function()
+
+#using the output of product function for Student loan
+example2 <- product_function(product="Vehicle loan or lease")
+
+#selecting the second dataframe, as that is the one with the state attributes and values
+heatmap_state_function(example2[2])
+```

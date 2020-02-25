@@ -1,0 +1,29 @@
+Package: CCDB
+Type: Package
+Title: Extract information about consumer complaints
+Version: 0.1.0
+Authors@R: person("Jae", "Ham", email = "jwh2171@columbia.edu",
+      role = c("aut", "cre"))
+Description: Extracts useful and clean information pertaining to consumer complaints from the consumer complaints database of the Consumer Finanical Protection Bureau.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1
+VignetteBuilder: knitr
+Suggests: 
+    testthat,
+    rmarkdown
+Imports: 
+    dplyr,
+    httr,
+    data.table,
+    rjson,
+    ggplot2,
+    maps,
+    maptools,
+    sp,
+    stringr,
+    rvest,
+    magrittr,
+    knitr,
+    forcats
