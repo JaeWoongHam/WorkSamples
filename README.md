@@ -14,7 +14,7 @@ Used ARMA models and sigmoid function fitted with spline to predict future coron
 https://github.com/JaeWoongHam/WorkSamples/tree/master/COVID19_Forecast_Model
 
 4) Exploratory Data Analysis and Visualization of NYC Taxi Data (Group Project, R) <br />
-Conducted extensive data analysis on 2019 NYC Yellow Cab Data sourced from TLC, and derived actionable insights. These insights are demonstrated on beautiful interactive graphs and maps using R Shiny and other tools. <br />
+Conducted extensive data analysis on 2019 NYC Yellow Cab Data sourced from TLC, and derived actionable insights. These insights are demonstrated on interactive graphs and maps using R Shiny and other tools. <br />
 https://rpubs.com/jaeham/groupw_website
 
 5) Deep Learning Model using Keras (Individual Project, Python) <br />
