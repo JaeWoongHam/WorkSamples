@@ -1,0 +1,26 @@
+
+<<<<<<< HEAD
+Data/.DS_Store
+Data/yellow_tripdata_2019-01.csv
+Data/yellow_tripdata_2019-02.csv
+Data/yellow_tripdata_2019-03.csv
+Data/yellow_tripdata_2019-04.csv
+Data/yellow_tripdata_2019-05.csv
+Data/yellow_tripdata_2019-06.csv
+jan_dec.csv
+jan_jun_taxi.csv
+=======
+Data/taxi_zones.dbf
+Data/taxi_zones.prj
+Data/taxi_zones.sbn
+Data/taxi_zones.sbx
+Data/taxi_zones.shp
+Data/taxi_zones.shp.xml
+Data/taxi_zones.shx
+*.csv
+
+>>>>>>> 5116f9b18d62610da768b4923f8df77087177c67
+.RData
+.Rhistory
+.Rhistory
+.Rhistory

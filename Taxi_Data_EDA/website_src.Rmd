@@ -1,0 +1,546 @@
+---
+title: "Project Web Site Group W"
+author: "Jae Woong Ham & Andrew Thvedt"
+date: "5/3/2020"
+output: html_document
+resource_files:
+- taxi_zones/.DS_Store
+- taxi_zones/taxi_zones.prj
+- taxi_zones/taxi_zones.sbn
+- taxi_zones/taxi_zones.sbx
+- taxi_zones/taxi_zones.shp.xml
+- taxi_zones/taxi_zones.shx
+---
+
+# Final Project: NYC Taxi Data {.tabset .tabset-pills}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rsconnect)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(RColorBrewer)
+library(tibble)
+library(lubridate)
+library(leaflet)
+library(sp)
+library(sf)
+library(rgdal)
+
+# Load data
+all_months <- read_csv('jan_dec.csv')
+
+# Read taxi zone shapefiles
+taxi_zones <- readOGR("taxi_zones/taxi_zones.shp")
+
+# Transform polygon
+proj <- spTransform(taxi_zones, '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs')
+
+# Creating a separate column for hour of the day
+all_months$hour <- hour(all_months$tpep_pickup_datetime)
+
+# Creating a separate column for weekdays
+all_months$day <- wday(all_months$tpep_pickup_datetime, label = TRUE, week_start = 1)
+
+# Creating a separate column for months
+all_months$month <- month(all_months$tpep_pickup_datetime, label = TRUE)
+
+# Creating a separate column for the date
+all_months$date <- date(all_months$tpep_pickup_datetime)
+
+# Replace Inf values with 0
+all_months <- all_months %>%
+  mutate(avg_mph = ifelse(avg_mph == Inf, 0, avg_mph))
+
+#add column containing names
+zone_df <- as.data.frame(taxi_zones) %>%
+  select("LocationID", "zone")
+
+all_months$PUzone <- zone_df$zone[match(all_months$PULocationID, zone_df$LocationID)]
+# Exclude values where duration is negative
+all_months <- all_months %>%
+  filter (duration > 0)
+```
+
+## Introduction
+
+***
+
+### Data
+
+This project relies on data from New York City's Taxi and Limousine Comission (TLC). NYC publishes this TLC data for all trips taken by Yellow Taxis, Green Taxis, For Hire Vehicles, and High Volume for High Vehicles. We rely on the Yellow Taxi data, as this is the transportation method most people use and are familiar with. NYC makes full trip data available starting in 2009, organized by month. Each month contains data on roughly 7 million trips. Given the size of this data, we are choosing to work with only data from 2019. A significant amount of data is available for each trip. The dataset contains information on: pickup and droppoff times, pickup and dropoff locations, rate cod, payment tipe, fare amount, credit card tips, and total amount.
+
+### Project Team
+
+For this project, Jae and Andrew received permission from Professor Brambor to work in a group of two. The two of us had been planning on this project using traffic data from New York City before this semester began. We also plan to expand on the scope of this project during the summer by implementing machine learning algorthims to build predictive models for this dataset. Given these factors, and our shared interest in this topic, we thought working in a group of two is most effective.
+
+### Website Content
+
+Our website is primarily split into two major portions. For the first part of our visualization, we used various forms of ggplots to demonstrate insightful points for duration of trips. This was done in the form of time series using a combination of aggregation and tailored configuration for each plot. For the second part of our visualization, we used variables that are most suited and ideal to be illustrated on maps for insightful analysis. This was done through leaflet maps with the implementation of aggregated data and custom feature additions.
+
+Please keep in mind that all the graphs are interactive in nature, except for the exploratory data analysis section. Instead of focusing a specific variable, our group thought it would be more useful to give user the control to use the already-available insights from the visualization based on his/her individual needs, either in the perspective of the consumer or taxi driver. Moreover, for interactive leaflet graph, one needs to not only hover over the area of interest, but also click on the area to display greater information about the area pertaining to the relevant variables of the map.
+
+Our team would also like to point out that the majority of the preprocessing and data scrubbing, as well as exploratory data analysis, are included as part of our process book, and is excluded from this section. This website only includes our final data viusalization outputs, in accordance with the instructions laid out in the class website.
+
+When aggregating data, our team used median for all variables, apart from tip amounts. This was done because the data contained a reasonable number of outliers that might skew the average during aggregation. As such, we determined median was the best method to most accurately capture the insights from the data relevant to the variables of interest.
+
+### Other Links
+
+Please find the online live links to the process book and our presentation below. The original powerpoint slides and the R markdown file for the process book can also be found in the public repository for our project. It is important to note that the Youtube link cannot be opened within the rpubs website, but have to be copied and pasted in a separate tab or webpage due to security reasons imposed by Youtube.
+
+Process Book: https://rpubs.com/jaeham/groupw_process_book
+
+Brief Presentation: https://youtu.be/4u6H_43spF4
+
+***
+
+## Exploratory Data Analysis
+
+Before diving into our final design, our group wanted to first explore and understand the variables. This was done in the following steps. We first conducted a univariate analysis of the variables of interest, then concluded with a bivariate analysis to explore the relationship between the variables.
+
+### Univariate Analysis
+
+```{r, echo = FALSE, warning = FALSE}
+plot1 <- ggplot(data=all_months, aes(x=as.numeric(duration)))+
+  geom_histogram(fill='springgreen3', binwidth = 0.5) +
+  xlab("Trip Duration (Minutes)") +
+  ylab("Count") +
+  scale_x_continuous(limits=c(0, 150)) +
+  theme_bw()
+plot1
+```
+<br/> As you can see, this most likely resembles a right skewed distribution, where most of the trip duration centered around 5-20 minutes. This makes sense in real life as most people would get yellow cabs to travel for a short period of time within the city.
+
+```{r, echo = FALSE, warning = FALSE}
+plot2 <- ggplot(data=all_months, aes(x=as.numeric(trip_distance)))+
+  geom_histogram(fill='springgreen3', binwidth = 0.3) +
+  xlab("Trip Distance (Miles)") +
+  ylab("Count") +
+  scale_x_continuous(limits=c(0, 30)) +
+  theme_bw()
+plot2
+```
+<br/> This also follows a right skewed distribution, although it is not as distinct as it was for trip duration. This is not surprising, as trip distance should be closely correlated with trip duration. It seems like most trips fall between 0.5 to 2.5 miles.
+
+```{r, echo = FALSE, warning = FALSE}
+plot3 <- ggplot(data=all_months, aes(x=as.numeric(adj_total)))+
+  geom_histogram(fill='springgreen3', binwidth=1.5) +
+  xlab("Adjusted Fare Total (Dollars)") +
+  ylab("Count") +
+  scale_x_continuous(limits=c(0, 100)) +
+  theme_bw()
+plot3
+```
+<br/> This shows a more uniform distribution than the last two charts. The most frequent trips are centered around 9-12 dollars. However, it is important to note it is still slightly skewed to the right with more trips falling in the more expensive range from 13.5 dollars to 30 dollars, than cheaper trips below 9 dollars.
+
+### Bivariate Analysis
+
+```{r, echo = FALSE, warning = FALSE}
+# this code is sourced from http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/, as the multiplot function is no longer offered as a built in function with the newest version of R
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+```
+
+```{r, echo = FALSE, warning = FALSE}
+plot4 <- ggplot(all_months, aes(x=trip_distance, y=as.numeric(duration))) + 
+  geom_point(colour="royalblue3") +
+  labs(title="Distance vs Duration", x="Distance (Miles)", y="Duration (Minutes)") +
+  theme_bw() +
+  scale_x_continuous(limits=c(0, 30)) +
+  scale_y_continuous(limits=c(0, 150))
+
+plot5 <- ggplot(all_months, aes(x=trip_distance, y=adj_total)) + 
+  geom_point(colour="royalblue3") +
+  labs(title="Distance vs Fare Total", x="Distance (Miles)", y="Fare Total (Dollars)") +
+  theme_bw() +
+  scale_x_continuous(limits=c(0, 30)) +
+  scale_y_continuous(limits=c(0, 100))
+
+plot6 <- ggplot(all_months, aes(x=trip_distance, y=adj_total)) + 
+  geom_point(colour="royalblue3") +
+  labs(title="Duration vs Fare Total", x="Duration (Minutes)", y="Fare Total (Dollars)") +
+  theme_bw() +
+  scale_x_continuous(limits=c(0, 50)) +
+  scale_y_continuous(limits=c(0, 100))
+
+multiplot(plot5,plot6,plot4,cols=1)
+```
+<br/>  From the multiplots of the three variables of interest, they all seem to share a positive relationship with each other as expected. This is also not surprising because greater the distance, one can expected the trip to last longer in duration, or vice versa. The same can be said about the fare price with either duration or distance of the trip. It is important to note, however, that the relationship between fare and duration or distance is more steep than between distance and duration.
+
+***
+
+## Time Series Analysis using ggplots
+
+Using ggplots, our group first decided to focus on the duration of the trip. We think there is an interesting story to be told from such variable. From a consumer perspective, it will be useful for someone to know when the trip will be shortest at what hour of the day, what day of the week or at what month of the year. Vice versa, it will also be useful for a cab driver to know when the trip will be the longest or shortest. Even though the same approach could have been incorporated for trip distance and fare amount, we thought this can be best shown on the map, instead of graphs. This is shown in our next section.
+
+```{r, echo = FALSE}
+plot7 <- all_months %>%
+  group_by(hour) %>%
+  summarise(median_duration = median(as.numeric(duration))) %>%
+  ggplot(aes(x=hour, 
+             y=median_duration,
+             group = 1,
+             text = paste('Hour of day: ',hour,'</br></br>Median duration of trip (in minutes): ',format(median_duration, digits=3))))+
+  geom_smooth(method="loess", formula=y ~ x) +
+  geom_point(color='midnightblue', size=2) +
+  labs(title="Duration of Aggregated Trips over 24 Hours", x="Hour (Military Time)", y="Duration (Minutes)") +
+  theme_bw()
+ggplotly(plot7, tooltip=c("text"))
+```
+From the graph above, the peak rush hour time period is shown to be from 9 a.m. to 6 p.m. with the median duration hovering around 12 minutes, and the duration gradually declines after 6 p.m. The lowest points are around 5 a.m. or 6 a.m.. This is reasonable considering that most people work from 9 a.m. to 6 p.m., and people frequently use cabs throughout the working period in the bustling city of New York.
+
+```{r, echo = FALSE}
+plot8 <- all_months %>%
+  group_by(day,hour) %>%
+  summarise(median_duration = median(as.numeric(duration))) %>%
+  ggplot(aes(x=hour, 
+             y=median_duration, 
+             group=as.factor(day),
+             text = paste('Hour of day: ',hour,'</br></br>Median duration of trip (in minutes): ',format(median_duration, digits=3))))+
+  geom_line(aes(color=as.factor(day))) +
+  labs(title="Duration of Aggregated Trips over 24 Hours Sorted by Day of Week", x="Hour (Military Time)", y="Duration (Minutes)") +
+  guides(color=guide_legend("Day")) +
+  theme_bw()
+ggplotly(plot8, tooltip=c("text"))
+```
+Our group further dissected the duration over a day by comparing its trends by the day of the week. One can clearly see how weekdays follow a similar trend of following a sharp increase in duration of trips from 7 a.m. to 12 p.m., which is followed by a gradual decline. This effect is similar to the aggregated graph above, but the effect is more pronounced and the rush hour seems to start earlier. However, there is a clear difference in this trend when looking at the weekends; Saturday and Sunday both follow a gradual increase from 7 a.m. to 7 p.m. (Saturday) or 3 p.m. (Sunday). As such, one can clearly see people start their day more slowly on these days.
+
+Note: you can selectively click on a single day by double clicking on the desired day of the week on the legend box of the interactive map. This would apply to any interactive maps with the legend embedded within the graph.
+
+
+```{r, echo = FALSE}
+plot9 <- all_months %>%
+  group_by(day) %>%
+  summarise(median_duration = median(as.numeric(duration))) %>%
+  ggplot(aes(x=as.factor(day), 
+             y=median_duration,
+             group=1,
+             text = paste('Day of week: ',day,'</br></br>Median duration of trip (in minutes): ',format(median_duration, digits=3))))+
+  geom_point(color='midnightblue', size=2) +
+  geom_line() +
+  labs(title="Duration of Aggregated Trips over Days of Week", x="Day of the Week", y="Duration (Minutes)") +
+  theme_bw()
+ggplotly(plot9, tooltip=c("text"))
+```
+Now, we shifted gears to study how the duration varies by the day of the week. This almosts seems like a normal distribution curve with Monday and Sunday having the two lowest duration (10.5 and 10 minutes), while Thursday marks the highest peak with around 12 minutes in duration. This trend was also reflected in the overall trend in previous graph when comparing day to day with Thursday having the highest duration on average, while Sunday had the lowest.
+
+```{r, echo = FALSE}
+plot10 <- all_months %>%
+  group_by(month,day) %>%
+  summarise(median_duration = median(as.numeric(duration))) %>%
+  ggplot(aes(x=day, 
+             y=median_duration, 
+             fill=as.factor(month),
+             text = paste('Day of week: ',day,'</br></br>Median duration of trip (in minutes): ',format(median_duration, digits=3))))+ 
+  geom_bar(stat="identity", width=0.7, position=position_dodge()) +
+  labs(title="Duration of Aggregated Trips over 24 Hours Sorted by Month", x="Day of Week", y="Duration (Minutes)") +
+  guides(fill=guide_legend("Month")) +
+  theme_bw()
+ggplotly(plot10, tooltip=c("text"))
+```
+Our group thought it would also be interesting to analyze the duration of weekdays by month, and compare month to month. It seems like June and October consistently share the highest peak throughout the days of the week, in general. This may be attributed to major holidays (i.e. summer break) or the start of schools (i.e. fall semester for universities), where people tend to travel more than other months of the year. In terms of day to day, thursday seem to have the highest duration of trips over any other day of the week, and Sunday have the lowest. This pattern is consistent with what we saw with the graph above.
+
+<br/>
+
+***
+
+## Trip Analysis using Leaflet Maps
+
+The following maps present different aspects of Yellow Taxi activity within New York City. These maps are divided into Taxi Zones defined by the city. Map visualizations have the advantage of clearly highlighting features by geography. The first set of maps examines the tipping behavior of passengers organized by pick up zone. The next set looks more broadly at NYC traffic patterns, analyzing which zones were more congested. The final map examines taxi activity as a whole.
+
+### Map 1 - Average Tip by Pickup Zone
+
+```{r, echo = FALSE}
+#data manipulation
+df_pu <- all_months %>%
+  group_by(PULocationID) %>%
+  filter(payment_type == 1) %>% #only filter trips with cc used as payment
+  summarize(passenger_count = mean(passenger_count),
+            fare_amount = mean(fare_amount),
+            trip_distance = mean(trip_distance),
+            extra = mean(extra),
+            mta_tax = mean(mta_tax),
+            tip_amount = mean(tip_amount),
+            tolls_amount = mean(tolls_amount),
+            total_amount = mean(total_amount),
+            fare_by_dist = mean(fare_by_dist),
+            duration = mean(duration),
+            avg_mph = mean(avg_mph),
+            adj_total = mean(adj_total))
+
+#create popup information
+content <- paste("Neighborhood:", taxi_zones$zone, "<br/>",
+                 "Average Tip:", "$", round(df_pu$tip_amount, digits = 2), "<br/>")
+
+#create color palette
+bins <- c(0, 1, 2, 3, 4, 5, 15)
+pal <- colorBin("Greens", domain = df_pu$tip_amount, bins = bins)
+
+#create map
+leaflet(df_pu) %>%
+  addTiles() %>%
+  setView(lng = -73.98928, lat = 40.75042, zoom = 10.2) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = proj,
+              popup = content,
+              weight = 1,
+              fillColor = ~pal(df_pu$tip_amount),
+              fillOpacity = 1,
+              highlightOptions = highlightOptions(
+                color='#000000',
+                weight = 3,
+                bringToFront = TRUE,
+                sendToBack = TRUE),
+              label = taxi_zones$zone) %>%
+  addLegend("topright",
+            pal = pal,
+            values = df_pu$tip_amount,
+            title = "Average Credit Card Tip (USD)",
+            opacity = 1,
+            labFormat = labelFormat(prefix = "$"))
+```
+This map displays the average credit card tip amount for each NYC Yellow Taxi pickup zone. This data was filtered to only include trips payed by credit card, as the NYC TLC dataset does not record cash tips. Interestingly, Manhattan pickup zones have relatively low average tips, while the other boroughs appear to higher average tips generally.
+
+### Map 2 - Average Tip Percent
+
+```{r, echo = FALSE, warning = FALSE}
+#data manipulation
+tips <- all_months %>%
+  group_by(PULocationID) %>%
+  filter(payment_type == 1) %>% #only filter trips with cc used as payment
+  mutate(tip_percent = tip_amount/(total_amount-tip_amount)*100) %>%
+    summarize(passenger_count = mean(passenger_count),
+            fare_amount = mean(fare_amount),
+            trip_distance = mean(trip_distance),
+            extra = mean(extra),
+            mta_tax = mean(mta_tax),
+            tip_amount = mean(tip_amount),
+            tolls_amount = mean(tolls_amount),
+            total_amount = mean(total_amount),
+            fare_by_dist = mean(fare_by_dist),
+            duration = mean(duration),
+            avg_mph = mean(avg_mph),
+            adj_total = mean(adj_total),
+            tip_percent = mean(tip_percent))
+
+#create popup content
+content <- paste("Neighborhood:", taxi_zones$zone, "<br/>",
+                 "Average Tip Percent:", round(tips$tip_percent, digits = 2), "<br/>")
+
+#create palette for map
+bins <- c(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60)
+pal <- colorBin("Greens", domain = tips$tip_percent, bins = bins)
+
+#create map
+leaflet(tips) %>%
+  addTiles() %>%
+  setView(lng = -73.98928, lat = 40.75042, zoom = 10.2) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = proj,
+              popup = content,
+              weight = 1,
+              fillColor = ~pal(tips$tip_percent),
+              fillOpacity = 1,
+              highlightOptions = highlightOptions(
+                color='#000000',
+                weight = 3,
+                bringToFront = TRUE,
+                sendToBack = TRUE),
+              label = taxi_zones$zone) %>%
+  addLegend("topright",
+            pal = pal,
+            values = tips$tip_percent,
+            title = "Average Credit Card Tip Percent",
+            opacity = 1)
+```
+Though mapping average tip data effectively shows the trend of which zones tip higher, a more accurate method of analyzing tips is to analyze by tip percent, since most riders generally tip a percentage of the total trip cost. This map below displays the average tip *percent* by taxi zone. This map tells a similar story to the previous visualization. Fun Fact: the average tip percentage in our dataaset for 2019 is  18%.
+
+### Map 3 - Median Speed
+
+```{r, echo = FALSE, warning = FALSE}
+#data manipulation 
+df_within <- all_months %>%
+  filter(PULocationID == DOLocationID) %>%
+    group_by(PULocationID) %>%
+  summarize(passenger_count = median(passenger_count),
+            fare_amount = median(fare_amount),
+            trip_distance = median(trip_distance),
+            extra = median(extra),
+            mta_tax = median(mta_tax),
+            tip_amount = median(tip_amount),
+            tolls_amount = median(tolls_amount),
+            total_amount = median(total_amount),
+            fare_by_dist = median(fare_by_dist),
+            duration = median(duration),
+            avg_mph = median(avg_mph),
+            adj_total = median(adj_total))
+
+#create popup
+content_mph <- paste("Neighborhood:", taxi_zones$zone, "<br/>")
+
+leaflet(df_within) %>%
+  addTiles() %>%
+  setView(lng = -73.98928, lat = 40.75042, zoom = 10.2) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  #Average Speed Layer
+  addPolygons(data = proj,
+              popup = content_mph,
+              weight = 1,
+              fillColor = ~colorQuantile("YlOrRd", df_within$avg_mph)(df_within$avg_mph),
+              fillOpacity = 1,
+              highlightOptions = highlightOptions(
+                color='#000000',
+                weight = 3,
+                bringToFront = TRUE,
+                sendToBack = TRUE),
+              label = taxi_zones$zone) %>%
+  addLegend("topright",
+            pal = colorQuantile("YlOrRd", df_within$avg_mph, n = 5),
+            values = df_within$avg_mph,
+            title = "Median Trip Speed (Percentile)",
+            opacity = 1,)
+```
+This map displays the median speed for each taxi zone. Since exact trip route data is not available trips were filtered to include a pickup and a dropoff within the same taxi zone in order to more accurately identify which zones were more congested.
+
+### Map 4 - Average Trip Cost
+
+```{r, echo = FALSE, warning = FALSE}
+#create popup
+content_cost <- paste("Neighborhood:", taxi_zones$zone, "<br/>",
+                 "Average Trip Amount:", "$", round(df_within$adj_total, digits = 2), "<br/>")
+
+leaflet(df_within) %>%
+  addTiles() %>%
+  setView(lng = -73.98928, lat = 40.75042, zoom = 10.2) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  #Average Trip Amount Layer
+  addPolygons(
+              data = proj,
+              popup = content_cost,
+              weight = 1,
+              fillColor = ~colorQuantile("BuGn", df_within$adj_total)(df_within$adj_total),
+              fillOpacity = 1,
+              highlightOptions = highlightOptions(
+                color='#000000',
+                weight = 3,
+                bringToFront = TRUE,
+                sendToBack = TRUE),
+              label = taxi_zones$zone) %>%
+    addLegend("topright",
+            pal = colorQuantile("BuGn", df_within$adj_total, n = 5),
+            values = df_within$adj_total,
+            title = "Average Trip Cost (Without Tips)",
+            opacity = 1,)
+```
+This map uses the same data as the previous map, which selects only trips that have the same pickup and drop off zones. This map displays the average total cost of a trip (minus the tips) for each zone. Given that taxi meters rely on a combination of distance and speed, this map serves as another proxy measure of congestion. The more expensive a trip, the further the taxi traveled and the longer the trip. 
+
+### Map 5 - Pickup and Dropoff Volume
+
+```{r, echo = FALSE, warning = FALSE}
+# data manipulation
+df_volume <- all_months %>%
+  group_by(PULocationID) %>%
+  tally()
+
+df_volume_do <- all_months %>%
+  group_by(DOLocationID) %>%
+  tally()
+
+
+#create popup contents
+content <- paste("Neighborhood:", taxi_zones$zone, "<br/>",
+                 "Number of Pickups", df_volume$n, "<br/>")
+
+content_do <- paste("Neighborhood:", taxi_zones$zone, "<br/>",
+                 "Number of Dropoffs:", df_volume_do$n, "<br/>")
+
+#create map
+leaflet(df_volume) %>%
+  addTiles() %>%
+  setView(lng = -73.98928, lat = 40.75042, zoom = 10.2) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  #Pickup Layer
+  addPolygons(group = "Pickups",
+    data = proj,
+              popup = content,
+              weight = 1,
+              fillColor = ~colorQuantile("Blues", df_volume$n)(df_volume$n),
+              fillOpacity = 1,
+              highlightOptions = highlightOptions(
+                color='#000000',
+                weight = 3,
+                bringToFront = TRUE,
+                sendToBack = TRUE),
+              label = taxi_zones$zone) %>%
+  addLegend("topright",
+            group = "Pickups",
+            pal = colorQuantile("Blues", df_volume$n, n = 5),
+            values = df_volume$n,
+            title = "Pickup Volume Percentile",
+            opacity = 1,) %>%
+    addPolygons(group = "Drop Offs",
+    data = proj,
+              popup = content_do,
+              weight = 1,
+              fillColor = ~colorQuantile("Blues", df_volume_do$n)(df_volume_do$n),
+              fillOpacity = 1,
+              highlightOptions = highlightOptions(
+                color='#000000',
+                weight = 3,
+                bringToFront = TRUE,
+                sendToBack = TRUE),
+              label = taxi_zones$zone) %>%
+  addLegend("topright",
+            group = "Drop Offs",
+            pal = colorQuantile("Blues", df_volume_do$n, n = 5),
+            values = df_volume_do$n,
+            title = "Drop Off Volume Percentile",
+            opacity = 1,) %>%
+  addLayersControl(overlayGroups = c("Pickups", "Drop Offs")
+  )
+```
+This final map displays taxi activity. Use the layer filters to display either Pickup or Drop Off Volumes. Click on a taxi zone to display the number of pickups and dropoffs in our dataset. Please note: this data relies on a subset of the entire dataset, so the count totals are only a portion of total trips, while the relative data is accurate. Unsurprisingly, Manhattan has many active pickup and dropoff zones. Similarly, JFK Airport and LaGuardia Airport are some of the busiest areas.
+
+
+### Map 6 - Traffic Volume
+
+Due to the incompatibility issue between R markdown and shiny app being embedded in a static R markdown html page, we published the R shiny app online in the following link:
+
+This map displays traffic volume based on a given pickup zone. Through a dropdown menu, a user can select a specific pickup location, which is highlighted in red on the map. Once a location is selected, the function calculates the number of dropoffs to all other zones. This calcuation, and subsequent mapping, is performed once a user selects a zone. This map shows a few interesting aspects of taxi activity. For example, one can see the difference in common dropoff zones between LaGuardia and JFK airports. The two most common dropoff locations based on pickups from LaGuardia are Sheepshead Bay and Little Italy/NoLiTa. JFK, on the other hand, most frequently drops off riders at Westchester Village/Unionport and Heartland Village/Todt Hill. This map allows a user to explore features of the data at a greater interactive level than the previous visualizations.
+
+https://jaewham.shinyapps.io/Traffic_Volume/

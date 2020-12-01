@@ -1,0 +1,189 @@
+---
+title: "Process Book"
+author: "Jae Woong Ham & Andrew Thvedt"
+date: "4/5/2020"
+output: html_document
+---
+
+### Introduction
+
+This is the process book for Group W. If you were looking for the main website, please refer back to the readme page. In this section, we will walk you through how the direction of our project has developed from our original proposal to our final execution. Please keep in mind that this does not include all the code and visualizations we have worked on, but included the most important phases of our project that led up to our final design, in accordance with the final project instructions.
+
+
+### Project Direction
+
+Our project focus has changed significantly over the course of working with this data. Our first concept for this project was to compare a variety of transportation methods within New York City. These datasets would cover Taxi (the data we ended up using for this project), Subway, Citi Bike, and Ridesharing apps (such as Uber, Lyft, etc.). New York City provided detailed data on Taxi and Subway trips over a long period of time. However, the data on Citi Bike and Ridesharing apps was significantly lower quality. Uber and Lyft data, for example, was only available from Fivethirtyeight, and contained incomplete data spanning only three years. NYC Taxi data, on the other hand, contains detailed trip information for every trip since 2009, organized by month and year. Since we wanted to continue working on this project and scale it over time, this level of detail and quality was important.
+
+After discussing and exploring this data further, we ultimately decided to only use NYC taxi data. A few reasons drove this decision. Though this meant we could no longer compare transportation methods, it provided a number of advantages that made this trade-off worth it. Comparing different forms of transportation would not provide many meaningful real-life insights. For example, the comparison of trip cost between trains and taxis would not be useful, as trains has a flat fee regardless of destination unless someone were to switch train lanes. Similarly, it wouldn't be useful to compare trip duration between taxis and ubers because that would mostly likely be dependent on traffic, and not the type of car they are driving. In other words, trip duration from either taxi data or ride sharing services should tell a very similar story for trip duration given a point in time. Furthermore, some datasets on Uber trips contained detailed latitude and longitude data for each trip. NYC Taxi data, on the other hand, only contains information on the pickup zone and dropoff zone. Despite this, the NYC dataset was larger, more complete, more accurate, and covered a greater duration of time. The completeness and level of detail meant that we could compare a variety of features, such as traffic patterns across time, tipping behavior in certain zones, and a number of other visualizations that ended up in our final project. 
+
+Working with NYC taxi data revealed interesting features of taxi behavior and traffic more broadly. For example, our dataset and visualizations showed that, unsurprisingly, JFK Airport is the busiest taxi pickup zone. The map visualizations also confirmed that Manhattan is consistently the most congested area in New York. Other maps also revealed interesting features of tipping behavior, namely that many people in the outer boroughs preferred to tip with cash than with credit cards. In Manhattan, however, credit card tips were significantly more common and of greater value. Other visualizations showed showed the peak trip duration occurred around 1-2pm and how taxi behavior differed on the weekends from the weekdays. We also learned that the most congested day of the week, measured by average trip duration, was Thursday. Though many of these findings are unsurprising, the strong dataset behind these conclusions confirms many intuitions about New York City traffic and Taxi data.
+
+### NYC Taxi Data
+
+Now that we have chosen the data, the first step in understanding our dataset is simply to load and preview the data.
+
+```{r}
+# importing all necessary packages
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(RColorBrewer)
+library(tibble)
+library(lubridate)
+```
+
+```{r}
+# importing data
+#jan_data <- read_csv("data/yellow_tripdata_2019-01.csv")
+#feb_data <- read_csv("data/yellow_tripdata_2019-02.csv")
+#mar_data <- read_csv("data/yellow_tripdata_2019-03.csv")
+#apr_data <- read_csv("data/yellow_tripdata_2019-04.csv")
+#may_data <- read_csv("data/yellow_tripdata_2019-05.csv")
+#jun_data <- read_csv("data/yellow_tripdata_2019-06.csv")
+july_data <- read_csv("data/yellow_tripdata_2019-07.csv")
+#aug_data <- read_csv("data/yellow_tripdata_2019-08.csv")
+#sep_data <- read_csv("data/yellow_tripdata_2019-09.csv")
+oct_data <- read_csv("data/yellow_tripdata_2019-10.csv")
+#nov_data <- read_csv("data/yellow_tripdata_2019-11.csv")
+#dec_data <- read_csv("data/yellow_tripdata_2019-12.csv")
+```
+
+Upon first glance, the dataset seems largely complete. However, since this dataset has millions of observations, our group wanted to calculate the number of missing observations to get a more accurate sense of this dataset.
+
+```{r, eval = FALSE}
+#total missingness in data
+sum(is.na(oct_data))
+
+#missingness by column
+colMeans(is.na(oct_data))*100
+```
+
+In total, there are 233,615 missing observations in the data for October. Though this number seem large, there are two mitigating factors. First, the dataset contains over seven million observations. Second, on a column by column basis, however, the missing data is not too important for our project. The pickup time, dropoff time, pickup location, and dropoff location columns have 0 missing data. Most of the missingness is in the VendorID, store_and_fwd_flag, passenger_count, payment_type, and RatecodeID columns. This is not a big issue for our project, as these columns are less useful for us.
+
+
+### Data Processing
+
+Once we had explored the data and discussed the next steps, we were ready to begin processing the data. Even though our group has already chosen to focus on the nyc yellow cab data, it easily had over 6.5 million data points on average per given month. This meant that not only do we have to focus on one year alone, we had to subset the data even further given it sheer large size. We have chosen 2019, as this was the most recent year in which the data was available. This would provide the most up to date insights in relation to the variables of interest. Most importantly, we took the following steps in preprocessing the data based on the following logic. Each point is demonstrated using the original July dataset prior to the preprocessing and subset procedure.
+
+#### 1) Rate Code ID
+Need to exclude rate code ID that fall out of the accepted code ID, and should be filtered for only the standard rate. For example, the July dataset clearly has a rate code ID that falls out of the acceptable range from 1-6, and also includes NA.
+```{r}
+unique(july_data$RatecodeID)
+```
+
+#### 2) Passenger Counts
+The maximum number of passengers accepted in a yellow cab taxi is 4, and 5 for some vehicles. As such, the number of passengers above 5 should be excluded from the dataset. Evident from the example below, there are trips with 0 or more than 5 passengers, which have to be excluded.
+```{r}
+unique(july_data$passenger_count)
+```
+
+#### 3) Fare Amount
+The fare amount includes negative numbers, and fares less than the mandatory $2.50 initial fee required by yellow cab drivers. As such, these observations should be dropped. As seen from the July dataset below, there are around 17000 observations with such cases.
+```{r}
+as.data.frame(table(july_data$fare_amount < 2.5)) %>%
+  rename(
+    Invalid_Fares = Var1
+  )
+```
+
+#### 4) Total Amount
+According to the official data dictionary, the total amount includes the tip amount. However, it excludes the tip amount if it is paid in cash. As such, the total amount should not include the tip amount altogether to compare more evenly across each trip. A new variable was created for a revised total amount.
+
+#### 5) Fare by Distance
+Our team thought it was useful to include an additional variable that calculates the cost of total fare by trip distance to understand how much customers are paying by mile.
+
+#### 6) Average Miles per Hour
+Our team also added an avg mph column to determine the average speed of the trip by first calculating the duration of the trip from subtracting the pickup time from dropoff time, and then diving the trip distance by the duration.
+
+
+#### 7) Randomly subsetting data
+Given the large size of the data (around 6-7 million observations per month), our team decided to use a smaller portion of the data by randomly subsetting the data by 100,000 observations per month. Moreover, a required sample size was calculated by using a population size of 6.5 million and desired confidence level of 95% and margin of error of 1% to derive a representative sample of 9,465. As such, using 100,000 observations is well above the recommended representative sample size.
+
+
+### Global Function
+
+We then converted this process into a global function, in order to be able to rapidly apply it to each month. Since we also plan to work with this dataset beyond the scope of this project, this allows us to simply reuse or adapt this function later. We each created a function and merged both our work for a final function.
+
+```{r}
+# global function to preprocess and subset data
+data_transform <- function(df) {
+  df <- df %>%
+    na.omit() %>%
+    filter(
+      RatecodeID == 1 
+      & trip_distance > 0 
+      & fare_amount > 2.5 
+      & passenger_count > 0 
+      & passenger_count <= 5) %>%
+    sample_n(100000) %>%
+    mutate(
+      fare_by_dist = total_amount / trip_distance,
+      duration = ((tpep_dropoff_datetime - tpep_pickup_datetime)/60),
+      avg_mph = (trip_distance/as.double(duration)/60),
+      adj_total = total_amount - tip_amount
+    )
+  return(df)
+}
+```
+
+We then merged all the dataframes, and exported the data so that we have a master dataframe to work with. Moreover, this was also for an efficiency purpose, as we did not want to overcrowd our global r environment.
+
+```{r}
+# applying function to preprocess and subset data
+#jan_rev <- data_transform(jan_data)
+#feb_rev <- data_transform(feb_data)
+#mar_rev <- data_transform(mar_data)
+#apr_rev <- data_transform(apr_data)
+#may_rev <- data_transform(may_data)
+#jun_rev <- data_transform(jun_data)
+#july_rev <- data_transform(july_data)
+#aug_rev <- data_transform(aug_data)
+#sep_rev <- data_transform(sep_data)
+#oct_rev <- data_transform(oct_data)
+#nov_rev <- data_transform(nov_data)
+#dec_rev <- data_transform(dec_data)
+
+# merging all of the dataframes
+#all_months <- do.call("rbind", list(jan_rev, feb_rev, mar_rev, apr_rev, may_rev, jun_rev, july_rev, aug_rev, sep_rev, oct_rev, nov_rev, dec_rev))
+
+# export data
+#write.csv(all_months, file = "jan_dec.csv", row.names = FALSE)
+```
+
+### Further Refining and Scrubbing the Dataset
+
+However, our group found ourselves further refining the dataset. As you may know, the preprocessing stage takes up majority of the time for any data science projects. These steps are more minor in comparison to the last stage, and each step is annotated in the code block below.
+
+```{r}
+# Load data from previously created master dataframe
+all_months <- read_csv('jan_dec.csv')
+
+# Creating a separate column for hour of the day
+all_months$hour <- hour(all_months$tpep_pickup_datetime)
+
+# Creating a separate column for weekdays
+all_months$day <- wday(all_months$tpep_pickup_datetime, label = TRUE, week_start = 1)
+
+# Creating a separate column for months
+all_months$month <- month(all_months$tpep_pickup_datetime, label = TRUE)
+
+# Creating a separate column for the date
+all_months$date <- date(all_months$tpep_pickup_datetime)
+
+# Exclude values where duration is negative
+all_months <- all_months %>%
+  filter (duration > 0)
+
+# Replace Inf values with 0
+all_months <- all_months %>%
+  mutate(avg_mph = ifelse(avg_mph == Inf, 0, avg_mph))
+```
+
+### Concluding Remarks
+
+From this point, our group wanted to explore various variables of interest that help us tell a compelling story and provide the reader with important insights. We were fortunate that there weren't that many variables within the original dataset. As such, it was clear which variables to choose. These were trip duration, tip amount, trip fare, and trip distance, in addition to our custom variables mentioned earlier. Our final work included these variables of interest, and each variable was tailored to the most appropriate visualization given the context. Our final outputs can be found in our main website. Please note that our interactive map built with Shiny is on a separate webpage from our other visualizations. We were forced to separate these visualizations due to a compatibility issue. The shinyapps.io website does not support uploading html interactive objects and the Rpubs website does not allow us to upload Shiny applications. Thus, we were forced to include these visualizations separately.
+
+Moving forward, our group plan to continue to work with this dataset. The next step is to begin working with the full set of NYC taxi data. In order to do this, we will use SQL to query Google's BigQuery service, which contains NYC taxi data via their live API service. This will allow us to aces the relevant data based on a user's input without having to store hundreds of millions of observations on our computers or a server. Once this process has been completed, we will then move to further integrating our code using cloud services. Using AWS, we can host our code in a way that allows us to create a more living and interactive website. This will allow a user to select the parameters they are interested in, create interactive visualizations using only the necessary data, and display this information. Once we have developed this, we plan to apply machine learning to this dataset, and build a predictive model that will forecast estimated duration and cost of the trip based on pickup and desired drop off location.
+
+Thank you.

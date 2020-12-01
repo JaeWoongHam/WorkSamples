@@ -1,0 +1,13 @@
+name: test
+title: test
+username:
+account: jaewham
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2277048
+bundleId: 3129607
+url: https://jaewham.shinyapps.io/test/
+when: 1589165589.16957
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: taxi_zones/.DS_Store|taxi_zones/taxi_zones.prj|taxi_zones/taxi_zones.sbn|taxi_zones/taxi_zones.sbx|taxi_zones/taxi_zones.shp.xml|taxi_zones/taxi_zones.shx
