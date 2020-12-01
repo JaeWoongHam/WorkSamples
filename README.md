@@ -13,10 +13,14 @@ https://github.com/JaeWoongHam/WorkSamples/blob/master/HDB_Resale_Prediction/HDB
 Used ARMA models and sigmoid function fitted with spline to predict future coronavirus cases based on past historical data. The code and report are included separately for this project. <br />
 https://github.com/JaeWoongHam/WorkSamples/tree/master/COVID19_Forecast_Model
 
-4) Deep Learning Model using Keras (Individual Project, Python) <br />
+4) Exploratory Data Analysis and Visualization of NYC Taxi Data (Group Project, R) <br />
+Conducted EDA on 2019 NYC Yellow Cab Data sourced from TLC, and derived actionable insights. These insights are demonstrated on interactive graphs and maps within the R Shiny platform. <br />
+https://rpubs.com/jaeham/groupw_website
+
+5) Deep Learning Model using Keras (Individual Project, Python) <br />
 Preprocessed UN World Happiness Survey data using scalars, transformers and encoders, and fitted a Keras deep neural network model to predict happiness. Final model was used to predict happiness within a production ready scalable rest API via ONNX. <br />
 https://github.com/JaeWoongHam/WorkSamples/blob/master/Neural_Network_Python/Keras_Neural_Network.ipynb
 
-5) Statistical Analysis Report (Individual Project, R) <br />
-Conducted regression analyses of relationship between socioeconomic factors and consumer trust of online news outlets to determine which variables have the highest predictive power, and optimized models by testing for different assumptions. <br />
+6) Statistical Analysis Report (Individual Project, R) <br />
+Developed regression analyses of relationship between socioeconomic factors and consumer trust of online news outlets to determine which variables have the highest predictive power, and optimized models by testing for different assumptions. <br />
 https://github.com/JaeWoongHam/WorkSamples/blob/master/Statistical_Analysis_Report_R/IndependentProject_JaeHam.pdf
